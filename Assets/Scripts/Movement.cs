@@ -8,15 +8,15 @@ public class Movement : MonoBehaviour
     public Vector2 initialDirection;
     public LayerMask obstacleLayer;
 
-    public Rigidbody2D rb { get; private set; }
+    public Rigidbody2D rigidbody { get; private set; }
     public Vector2 direction { get; private set; }
     public Vector2 nextDirection { get; private set; }
     public Vector3 startingPosition { get; private set; }
 
     private void Awake()
     {
-        rb = GetComponent<Rigidbody2D>();
-        startingPosition = transform.position;
+        this.rigidbody = GetComponent<Rigidbody2D>();
+        this.startingPosition = transform.position;
     }
 
     private void Start()
@@ -26,51 +26,52 @@ public class Movement : MonoBehaviour
 
     public void ResetState()
     {
-        speedMultiplier = 1f;
-        direction = initialDirection;
-        nextDirection = Vector2.zero;
-        transform.position = startingPosition;
-        rb.bodyType = RigidbodyType2D.Dynamic;
-        enabled = true;
+        this.speedMultiplier = 1f;
+        this.direction = initialDirection;
+        this.nextDirection = Vector2.zero;
+        this.transform.position = startingPosition;
+        this.rigidbody.isKinematic = false;
+        this.enabled = true;
     }
 
     private void Update()
     {
-        float horizontal = Input.GetAxisRaw("Horizontal");
-        float vertical = Input.GetAxisRaw("Vertical");
-
-        Vector2 inputDirection = new Vector2(horizontal, vertical);
-
-        if (inputDirection != Vector2.zero)
-        {
-            SetDirection(inputDirection.normalized);
+        // Try to move in the next direction while it's queued to make movements
+        // more responsive
+        if (this.nextDirection != Vector2.zero) {
+            SetDirection(this.nextDirection);
         }
     }
 
     private void FixedUpdate()
     {
-        Vector2 position = rb.position;
-        Vector2 translation = speed * speedMultiplier * Time.fixedDeltaTime * direction;
+        Vector2 position = this.rigidbody.position;
+        Vector2 translation = this.speed * this.speedMultiplier * Time.fixedDeltaTime * this.direction;
 
-        rb.MovePosition(position + translation);
+        this.rigidbody.MovePosition(position + translation);
     }
 
     public void SetDirection(Vector2 direction, bool forced = false)
     {
+        // Only set the direction if the tile in that direction is available
+        // otherwise we set it as the next direction so it'll automatically be
+        // set when it does become available
         if (forced || !Occupied(direction))
         {
             this.direction = direction;
-            nextDirection = Vector2.zero;
+            this.nextDirection = Vector2.zero;
         }
         else
         {
-            nextDirection = direction;
+            this.nextDirection = direction;
         }
     }
 
     public bool Occupied(Vector2 direction)
     {
-        RaycastHit2D hit = Physics2D.BoxCast(transform.position, Vector2.one * 0.75f, 0f, direction, 1.5f, obstacleLayer);
+        // If no collider is hit then there is no obstacle in that direction
+        RaycastHit2D hit = Physics2D.BoxCast(this.transform.position, Vector2.one * 0.75f, 0f, direction, 1.5f, this.obstacleLayer);
         return hit.collider != null;
     }
+
 }
